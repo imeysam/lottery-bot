@@ -20,6 +20,14 @@ ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 bot = TeleBot(TOKEN)
 
 
+image_folder_name = 'user_images'
+image_folder_path = os.path.join(ROOT_PATH, image_folder_name)
+os.makedirs(image_folder_path, exist_ok=True)
+# if not os.path.exists(image_folder):
+#     os.makedirs(image_folder)
+
+image_samples_folder = os.path.join(ROOT_PATH, 'img_samples')
+
 
 user_steps = User.steps()
 
@@ -222,13 +230,18 @@ def start_message(message: Message):
 
 
 def show_photo_examples(chat_id):
+    bot.send_message(
+        chat_id=chat_id,
+        text="لطفا شکیبا باشید ...",
+    )
+    
     media = [
-        InputMediaPhoto(open('img_samples/1.png', 'rb')),
-        InputMediaPhoto(open('img_samples/2.png', 'rb')),
-        InputMediaPhoto(open('img_samples/3.png', 'rb')),
-        InputMediaPhoto(open('img_samples/4.png', 'rb')),
-        InputMediaPhoto(open('img_samples/5.png', 'rb')),
-        InputMediaPhoto(open('img_samples/6.png', 'rb')),
+        InputMediaPhoto(open(f'{image_samples_folder}/1.png', 'rb')),
+        InputMediaPhoto(open(f'{image_samples_folder}/2.png', 'rb')),
+        InputMediaPhoto(open(f'{image_samples_folder}/3.png', 'rb')),
+        InputMediaPhoto(open(f'{image_samples_folder}/4.png', 'rb')),
+        InputMediaPhoto(open(f'{image_samples_folder}/5.png', 'rb')),
+        InputMediaPhoto(open(f'{image_samples_folder}/6.png', 'rb')),
     ]
 
     media[0].caption = photo_example_captions
@@ -247,11 +260,7 @@ def photo_example_call(call):
     show_photo_examples(chat_id=user_chat_id)
 
 
-image_folder_name = 'user_images'
-image_folder_path = os.path.join(ROOT_PATH, image_folder_name)
-os.makedirs(image_folder_path, exist_ok=True)
-# if not os.path.exists(image_folder):
-#     os.makedirs(image_folder)
+
 
     
 @bot.callback_query_handler(func=lambda call: call.data == "btn_show")
