@@ -106,7 +106,7 @@ class User(Base):
     birth_place_country = Column(String, nullable=True)
     birth_place_city = Column(String, nullable=True)
     marital_status = Column(String, nullable=True)
-    children_count = Column(Integer, nullable=True)
+    children_count = Column(Integer, default=0)
     mobile_number = Column(String, nullable=True)
     email = Column(String, nullable=True)
     photo = Column(String, nullable=True)
