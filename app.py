@@ -223,10 +223,12 @@ def start_message(message: Message):
 
 def show_photo_examples(chat_id):
     media = [
-        InputMediaPhoto(open('img_samples/1.jpg', 'rb')),
+        InputMediaPhoto(open('img_samples/1.png', 'rb')),
         InputMediaPhoto(open('img_samples/2.png', 'rb')),
-        InputMediaPhoto(open('img_samples/3.jpg', 'rb')),
-        InputMediaPhoto(open('img_samples/4.jpeg', 'rb'))
+        InputMediaPhoto(open('img_samples/3.png', 'rb')),
+        InputMediaPhoto(open('img_samples/4.png', 'rb')),
+        InputMediaPhoto(open('img_samples/5.png', 'rb')),
+        InputMediaPhoto(open('img_samples/6.png', 'rb')),
     ]
 
     media[0].caption = photo_example_captions
