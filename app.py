@@ -103,7 +103,7 @@ def show_user_info(user):
 
 
 def get_info_prompt(user):
-    show_user_info(user=user)
+    # show_user_info(user=user)
     
     if user.is_completed == False:
         if user.step <= user.last_step:
@@ -346,16 +346,17 @@ def show_photos(call):
     count = 0
     if user is not None:
         if user.photo is not None:
-            print(user.photo)
+            photo_path = os.path.join(image_folder_path, user.photo)
             media = [
-                InputMediaPhoto(open(user.photo, 'rb')),
+                InputMediaPhoto(open(photo_path, 'rb')),
             ]
             media[0].caption = user.first_name if user.first_name is not None else "تصویر شما"
             bot.send_media_group(user_chat_id, media)
             count += 1
             
         if user.spouse_photo is not None:
-            media = [InputMediaPhoto(open(user.spouse_photo, 'rb'))]
+            photo_path = os.path.join(image_folder_path, user.spouse_photo)
+            media = [InputMediaPhoto(open(photo_path, 'rb'))]
             media[0].caption = user.spouse_first_name if user.spouse_first_name is not None else "تصویر همسر"
             bot.send_media_group(user_chat_id, media)
             count += 2
@@ -364,7 +365,8 @@ def show_photos(call):
             children = db.query(Child).filter(Child.user_id == user.id).all()
             for child in children:
                 if child.photo is not None:
-                    media = [InputMediaPhoto(open(child.photo, 'rb'))]
+                    photo_path = os.path.join(image_folder_path, child.photo)
+                    media = [InputMediaPhoto(open(photo_path, 'rb'))]
                     media[0].caption = child.first_name if child.first_name is not None else f"تصویر فرزند {child.order_no}"
                     bot.send_media_group(user_chat_id, media)
                     count += 1
@@ -390,13 +392,13 @@ def get_photo(message, user, prefix = "_self"):
     
     # Create a filename (e.g., "image_<user_id>_<message_id>.jpg")
     file_name = f'{user.chat_id}_{prefix}_{message.message_id}.jpg'
-    file_path = os.path.join(image_folder_name, file_name)
+    file_full_path = os.path.join(image_folder_path, file_name)
     
     # Save the image to the folder
-    with open(file_path, 'wb') as new_file:
+    with open(file_full_path, 'wb') as new_file:
         new_file.write(downloaded_file.content)
         
-    return file_path
+    return file_name
 
 
 @bot.message_handler(content_types=['photo'])
@@ -414,7 +416,7 @@ def store_photo(message):
                 setattr(user, field_name, photo_path)
                 user.step += 1
                 db.commit()
-                bot.reply_to(message, f"تصویر {field_name_fa} با موفقیت ذخیره شد.")
+                bot.reply_to(message, f"✅ تصویر {field_name_fa} با موفقیت ذخیره شد.")
                 get_info_prompt(user=user)
                 return
         elif user.has_child:
@@ -424,11 +426,11 @@ def store_photo(message):
                 child.photo = photo_path
                 user.step += 1
                 db.commit()
-                bot.reply_to(message, f"تصویر فرزند {child.order_no} با موفقیت ذخیره شد.")
+                bot.reply_to(message, f"✅ تصویر فرزند {child.order_no} با موفقیت ذخیره شد.")
                 get_info_prompt(user=user)
                 return
     
-    bot.reply_to(message, "امکان ثبت تصویر وجود ندارد.")
+    bot.reply_to(message, "❌ امکان ثبت تصویر وجود ندارد.")
     get_info_prompt(user=user)
     
    
