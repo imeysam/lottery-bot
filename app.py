@@ -8,10 +8,12 @@ from telebot.types import (
     InputMediaPhoto
 )
 from database import get_db
-from models import User, Child
+from models import User, Child, UserStatus
 from sqlalchemy.orm import Session
 import requests
 from const import education_levels, genders, marital_statuses, photo_example_captions
+from services import get_user_by_chat_id
+
 
 load_dotenv()
 
@@ -184,11 +186,9 @@ def get_info_prompt(user):
 @bot.message_handler(commands=['start', 'follow'])
 def start_message(message: Message):
     user_chat_id = message.chat.id
-    print(message.chat)
     markup = InlineKeyboardMarkup()
     
-    db: Session = next(get_db())
-    existing_user = db.query(User).filter(User.chat_id == user_chat_id).first()
+    existing_user = get_user_by_chat_id(chat_id=user_chat_id)
     if existing_user is not None:
         btn_show = InlineKeyboardButton(
             text=f"{existing_user.icon} نمایش اطلاعات", callback_data="btn_show"
@@ -202,9 +202,12 @@ def start_message(message: Message):
         btn_photos = InlineKeyboardButton(
             text="🖼 تصاویر ارسال شده", callback_data="show_photos"
         )
+        btn_show_status = InlineKeyboardButton(
+            text="📊 وضعیت ثبت‌نام", callback_data="btn_show_status"
+        )
         markup.add(btn_next)
         markup.add(btn_edit, btn_show)
-        markup.add(btn_photos)
+        markup.add(btn_show_status, btn_photos)
     else:
         db: Session = next(get_db())
         existing_user = User(chat_id=user_chat_id, username=message.chat.username)
@@ -259,24 +262,41 @@ def photo_example_call(call):
     user_chat_id = call.message.chat.id
     show_photo_examples(chat_id=user_chat_id)
 
+@bot.callback_query_handler(func=lambda call: call.data == "photo_example")
+def photo_example_call(call):
+    user_chat_id = call.message.chat.id
+    show_photo_examples(chat_id=user_chat_id)
+
 
 
 
     
+@bot.callback_query_handler(func=lambda call: call.data == "btn_show_status")
+def show_status(call):
+    user_chat_id = call.message.chat.id
+    user = get_user_by_chat_id(chat_id=user_chat_id)
+    bot.answer_callback_query(call.id)
+    
+    text = f"*وضعیت ثبت‌نام شما: *\n\n {user.status_log}"
+    bot.send_message(
+        chat_id=user.chat_id,
+        text=text,
+        parse_mode='Markdown'
+    )
+    
+
 @bot.callback_query_handler(func=lambda call: call.data == "btn_show")
 def show_info(call):
     user_chat_id = call.message.chat.id
-    db: Session = next(get_db())
-    existing_user = db.query(User).filter(User.chat_id == user_chat_id).first()
+    user = get_user_by_chat_id(chat_id=user_chat_id)
     bot.answer_callback_query(call.id)
-    show_user_info(user=existing_user)
+    show_user_info(user=user)
     
 
 @bot.callback_query_handler(func=lambda call: call.data == "btn_edit")
 def edit_info(call):
     user_chat_id = call.message.chat.id
-    db: Session = next(get_db())
-    user = db.query(User).filter(User.chat_id == user_chat_id).first()
+    user = get_user_by_chat_id(chat_id=user_chat_id)
     user.is_completed = False
     user.step = 1
     db.commit()
@@ -287,8 +307,7 @@ def edit_info(call):
 @bot.callback_query_handler(func=lambda call: call.data == "next_step")
 def next_info(call):
     user_chat_id = call.message.chat.id
-    db: Session = next(get_db())
-    user = db.query(User).filter(User.chat_id == user_chat_id).first()
+    user = get_user_by_chat_id(chat_id=user_chat_id)
     if user.is_completed == False:
         if user.step <= user.last_step:
             user.step += 1
@@ -306,8 +325,7 @@ def next_info(call):
 # @bot.callback_query_handler(func=lambda call: call.data == "prev_step")
 # def prev_info(call):
 #     user_chat_id = call.message.chat.id
-#     db: Session = next(get_db())
-#     user = db.query(User).filter(User.chat_id == user_chat_id).first()
+#     user = get_user_by_chat_id(chat_id=user_chat_id)
 #     if user.is_completed == False:
 #         child = db.query(Child).filter(Child.user_id == user.id, Child.is_completed == False).first()
         
@@ -331,18 +349,16 @@ def next_info(call):
 @bot.callback_query_handler(func=lambda call: call.data == "get_info")
 def get_info(call):
     user_chat_id = call.message.chat.id
-    db: Session = next(get_db())
-    existing_user = db.query(User).filter(User.chat_id == user_chat_id).first()
+    user = get_user_by_chat_id(chat_id=user_chat_id)
     bot.answer_callback_query(call.id)
-    get_info_prompt(user=existing_user)
+    get_info_prompt(user=user)
         
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "show_photos")
 def show_photos(call):
     user_chat_id = call.message.chat.id
-    db: Session = next(get_db())
-    user = db.query(User).filter(User.chat_id == user_chat_id).first()
+    user = get_user_by_chat_id(chat_id=user_chat_id)
     count = 0
     if user is not None:
         if user.photo is not None:
@@ -424,7 +440,7 @@ def store_photo(message):
             if child is not None:
                 photo_path = get_photo(message=message, user=user, prefix=f"_child_{child.order_no}")
                 child.photo = photo_path
-                user.step += 1
+                child.step += 1
                 db.commit()
                 bot.reply_to(message, f"✅ تصویر فرزند {child.order_no} با موفقیت ذخیره شد.")
                 get_info_prompt(user=user)
@@ -473,6 +489,7 @@ def store_text_info(message):
             child = db.query(Child).filter(Child.user_id == user.id, Child.is_completed == False).count()
             if child == 0:
                 user.is_completed = True
+                user.status = UserStatus.AWAINTING_CONFIRMATION.value
                 db.commit()
                 
 

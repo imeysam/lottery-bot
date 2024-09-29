@@ -3,6 +3,8 @@ from typing import List
 from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, relationship
 from const import education_levels, genders, marital_statuses, photo_example_captions
+from enum import Enum
+from database import get_db
 
 
 class Child(Base):
@@ -89,12 +91,29 @@ class Child(Base):
         }
 
 
+class UserStatus(Enum):
+    COMPLETING = 10
+    AWAINTING_CONFIRMATION = 20
+    AWAINTING_PAYMENT = 30
+    AWAINTING_REGISTRATION = 40
+    FINALIZED = 50
+
+user_status_translations = {
+    UserStatus.COMPLETING: "تکمیل اطلاعات",
+    UserStatus.AWAINTING_CONFIRMATION: "تایید اطلاعات",
+    UserStatus.AWAINTING_PAYMENT: "پرداخت",
+    UserStatus.AWAINTING_REGISTRATION: "ثبت در سامانه لاتاری",
+    UserStatus.FINALIZED: "ثبت‌نام شده",
+}
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     chat_id = Column(Integer)
     is_completed = Column(Boolean, default=False)
+    is_paid = Column(Boolean, default=False)
+    status = Column(Integer, nullable=False, default=UserStatus.COMPLETING.value)
     step = Column(Integer, default=1)
 
     username = Column(String, nullable=True)
@@ -128,10 +147,18 @@ class User(Base):
     children = relationship(
         "Child", back_populates="user", cascade="all, delete, delete-orphan"
     )
-
+    
     @property
     def has_spouse(self):
         return self.marital_status == "متاهل"
+    
+    @property
+    def status_fa(self):
+        return user_status_translations.get(self.status, "نامشخص")
+    
+    @property
+    def is_finalized(self):
+        return self.status == UserStatus.FINALIZED
     
     @property
     def icon(self):
@@ -145,7 +172,35 @@ class User(Base):
     def last_step(self):
         return 25 if self.has_spouse == True else 17
 
+    @property
+    def status_log(self):
+        current_status_value = self.status
+        steps_before = []
+        steps_after = []
+        current_status = None
 
+        # Iterate through the UserStatus enum
+        for status in UserStatus:
+            if status.value < current_status_value:
+                steps_before.append(user_status_translations[status])
+            elif status.value == current_status_value:
+                current_status = user_status_translations[status]
+            else:
+                steps_after.append(user_status_translations[status])
+
+        status_steps = []
+        
+        # Display the results
+        for step in steps_before:
+            status_steps.append(f"🟢 {step}")
+
+        status_steps.append(f"🔵 {current_status}")
+        
+        for step in steps_after:
+            status_steps.append(f"{step}")
+        return "\n".join(status_steps)
+
+        
     @staticmethod
     def steps():
         return {
