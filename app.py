@@ -299,6 +299,7 @@ def edit_info(call):
     user = get_user_by_chat_id(chat_id=user_chat_id)
     user.is_completed = False
     user.step = 1
+    user.status = UserStatus.COMPLETING.value
     db.commit()
     bot.answer_callback_query(call.id)
     get_info_prompt(user=user)
