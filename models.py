@@ -115,7 +115,8 @@ class User(Base):
     is_paid = Column(Boolean, default=False)
     status = Column(Integer, nullable=False, default=UserStatus.COMPLETING.value)
     step = Column(Integer, default=1)
-
+    tracking_code = Column(String, nullable=True)
+    
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
@@ -143,6 +144,7 @@ class User(Base):
     spouse_birth_place_country = Column(String, nullable=True)
     spouse_birth_place_city = Column(String, nullable=True)
     spouse_photo = Column(String, nullable=True)
+    receipt_photo = Column(String, nullable=True)
 
     children = relationship(
         "Child", back_populates="user", cascade="all, delete, delete-orphan"
@@ -185,8 +187,8 @@ class User(Base):
                 steps_before.append(user_status_translations[status])
             elif status.value == current_status_value:
                 current_status = user_status_translations[status]
-            else:
-                steps_after.append(user_status_translations[status])
+            # else:
+            #     steps_after.append(user_status_translations[status])
 
         status_steps = []
         
@@ -200,6 +202,19 @@ class User(Base):
             status_steps.append(f"{step}")
         return "\n".join(status_steps)
 
+    @property
+    def is_awaiting_payment(self):
+        return self.status == UserStatus.AWAINTING_PAYMENT.value
+        
+
+    @property
+    def can_edit_info(self):
+        return self.status < UserStatus.AWAINTING_PAYMENT.value
+        
+
+    @property
+    def can_show_status_log(self):
+        return self.status > UserStatus.COMPLETING.value
         
     @staticmethod
     def steps():
